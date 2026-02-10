@@ -185,21 +185,18 @@ async function runMonitors(): Promise<void> {
   const monitors: MonitorConfig[] = [
     {
       key: "default",
-      // Updated default: Prioritize the handle or exact phrase, exclude common noise?
-      // User complaint: "Canada spends billions" -> matches "Canada Spends".
-      // Fix: Use "@CanadaSpends" OR "CanadaSpends" (one word) OR exact phrase with quotes but be careful.
-      // Safest noise-free default: just the handle and single word project name.
-      query: process.env.DEFAULT_QUERY ?? '@CanadaSpends OR "CanadaSpends" OR url:canadaspends',
+
+      query: (process.env.DEFAULT_QUERY ?? '@canada_spends OR "CanadaSpends" OR url:canadaspends') + ' -from:canada_spends',
       label: "Main Keywords"
     },
     {
       key: "links",
-      query: "url:canadaspends",
+      query: "url:canadaspends -from:canada_spends",
       label: "Site Links"
     },
     {
       key: "traction_replies",
-      query: `(to:${mainAccount}) (min_faves:10 OR min_retweets:5)`,
+      query: `(to:${mainAccount}) (min_faves:10 OR min_retweets:5) -from:canada_spends`,
       label: "High Traction Replies"
     }
     // Add "mentions" if needed: `(to:${mainAccount} OR @${mainAccount}) ...`
