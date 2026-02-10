@@ -1,0 +1,19 @@
+[
+  {
+    "handle": "JustinTrudeau",
+    "name": "Justin Trudeau",
+    "category": "MP"
+  },
+  {
+    "handle": "PierrePoilievre",
+    "name": "Pierre Poilievre",
+    "category": "MP"
+  },
+  {
+    "handle": "JagmeetSingh",
+    "name": "Jagmeet Singh",
+    "category": "MP"
+  },
+  "CBCNews",
+  "CTVNews"
+]
