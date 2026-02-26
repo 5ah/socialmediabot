@@ -2,7 +2,6 @@
 
 A powerful social media monitoring tool designed to track the online presence of CanadaSpends, monitor VIP accounts (MPs, Journalists), and analyze engagement on Twitter/X.
 
-> **Note:** This project was built with the assistance of **Antigravity** by Google DeepMind.
 
 ## 🚀 Features
 
@@ -45,14 +44,19 @@ A powerful social media monitoring tool designed to track the online presence of
     *   `TWITTER_API_IO_KEY`: API key from [twitterapi.io](https://twitterapi.io/) (for VIP tracking & enrichment).
     *   `MAIN_ACCOUNT_HANDLE`: The handle to track (e.g., `canada_spends`).
     *   `NITTER_INSTANCES`: Comma-separated list of Nitter instances (e.g., `https://nitter.net,http://localhost:8080`).
+    *   `UC_CHROME_BINARY` (Optional): If you use the `nitter-tools` python scripts to generate sessions on Windows or Linux, set this environment variable to your Chrome executable path (e.g., `C:\Program Files\Google\Chrome\Application\chrome.exe` on Windows or `/usr/bin/google-chrome` on Linux).
 
 ## 🏃 Usage
 
 ### Run the Monitor Service
-Starts the main worker that polls for new tweets and checks VIPs periodically.
-```bash
-npm run worker
-```
+1. Start the Docker containers first (Nitter + Redis) to ensure the bot can scrape Twitter successfully:
+    ```bash
+    docker compose up -d
+    ```
+2. Once the containers are running, start the main worker that polls for new tweets and checks VIPs periodically:
+    ```bash
+    npm run worker
+    ```
 
 ### Run VIP Check Manually
 Performs a one-time check of your VIP list to see who follows you.
