@@ -2,4 +2,7 @@ node_modules/
 dist/
 .env
 .state.json
+.vip_state.json
+sessions.jsonl
 .DS_Store
+.venv/

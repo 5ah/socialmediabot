@@ -8,10 +8,12 @@ export type DiscordEmbed = {
   timestamp?: string;
   footer?: {
     text: string;
+    icon_url?: string;
   };
   author?: {
     name: string;
     url?: string;
+    icon_url?: string;
   };
   fields?: Array<{
     name: string;
@@ -53,111 +55,114 @@ export async function postToDiscord(
   label?: string,
 ): Promise<void> {
   const xUrl = toXUrl(tweet);
-
-  // Custom Title based on label
-  let titlePrefix = "New mention";
-  if (label?.includes("Traction")) titlePrefix = "🔥 High Traction";
-  else if (label?.includes("Link")) titlePrefix = "🔗 Site Link";
-  else if (label) titlePrefix = `📢 ${label}`;
-
-  const embed: DiscordEmbed = {
-    title: `${titlePrefix} from ${tweet.authorName || tweet.authorHandle || "Unknown"}`,
-    description: tweet.text.length > 300 ? tweet.text.slice(0, 297) + "..." : tweet.text,
-    url: xUrl,
-    color: 0x1da1f2, // X blue
-    timestamp: tweet.createdAt,
-    author: tweet.authorHandle
-      ? {
-        name: tweet.authorHandle,
-        url: `https://x.com/${tweet.authorHandle.replace("@", "")}`,
-      }
-      : undefined,
-    fields: [],
-  };
-
-  if (tweet.matchedKeywords && tweet.matchedKeywords.length > 0) {
-    embed.fields?.push({
-      name: "🔍 Keywords",
-      value: tweet.matchedKeywords.join(", "),
-      inline: true,
-    });
-  }
-
-  if (tweet.matchedDomains && tweet.matchedDomains.length > 0) {
-    embed.fields?.push({
-      name: "🌐 Domains",
-      value: tweet.matchedDomains.join(", "),
-      inline: true,
-    });
-  }
-
-  const stats: string[] = [];
-  if (tweet.replies) stats.push(`💬 ${tweet.replies}`);
-  if (tweet.retweets) stats.push(`🔁 ${tweet.retweets}`);
-  if (tweet.likes) stats.push(`❤️ ${tweet.likes}`);
-
-  // ... existing stats code ...
-  if (stats.length > 0) {
-    embed.fields?.push({
-      name: "📊 Engagement",
-      value: stats.join("  "),
-      inline: false,
-    });
-  }
-
-  // --- Account Info (Enriched) ---
-  // We assume tweet is EnrichedTweet (has accountInfo optional)
   const info = (tweet as any).accountInfo;
+
+  // 1. Determine Color & Title Prefix
+  let color = 0x1da1f2; // Default Blue
+  let titlePrefix = "New Tweet";
+
+  if (label?.toLowerCase().includes("traction")) {
+    color = 0xff4500; // Orange-Red for Heat/Traction
+    titlePrefix = "🔥 High Traction";
+  } else if (label?.toLowerCase().includes("link")) {
+    color = 0x2ecc71; // Green for Links
+    titlePrefix = "🔗 Site Link";
+  } else if (label) {
+    titlePrefix = `📢 ${label}`;
+  }
+
+  // 2. Build Description
+  // Truncate text if too long
+  const text = tweet.text.length > 300 ? tweet.text.slice(0, 297) + "..." : tweet.text;
+
+  // 3. Build Fields
+  const fields = [];
+
+  // Stats Bar: [ ❤️ 12 | 🔁 5 | 💬 2 ] + [ 👥 1.2k Followers ]
+  const statsParts = [];
+  if (tweet.likes) statsParts.push(`❤️ ${tweet.likes}`);
+  if (tweet.retweets) statsParts.push(`🔁 ${tweet.retweets}`);
+  if (tweet.replies) statsParts.push(`💬 ${tweet.replies}`);
+
+  if (statsParts.length > 0) {
+    fields.push({
+      name: "📊 Engagement",
+      value: statsParts.join("   "),
+      inline: true
+    });
+  }
+
+  // Account Status
   if (info) {
-    const parts: string[] = [];
+    const statusParts = [];
 
-    // Followers
+    // Followers count if not already shown? Let's put followers in its own mini-section or combine
     if (typeof info.followersCount === "number") {
-      parts.push(`**Followers:** ${info.followersCount.toLocaleString()}`);
+      fields.push({
+        name: "👥 Audience",
+        value: `${info.followersCount.toLocaleString()} Followers`,
+        inline: true
+      });
     }
 
-    // Follows Us
-    if (info.followsUs === true) {
-      parts.push(`**Follows Us:** ✅ YES`);
-    } else if (info.followsUs === false) {
-      parts.push(`**Follows Us:** ❌ NO`);
-    }
+    // Network / Follows
+    if (info.followsUs !== undefined || info.networkStatus) {
+      let statusLine = "";
 
-    // Network Status
-    if (info.networkStatus) {
-      let statusIcon = "❓";
-      if (info.networkStatus === "In-Network") statusIcon = "🟢";
-      if (info.networkStatus === "Out-of-Network") statusIcon = "🔴";
+      // Network Icon
+      if (info.networkStatus === "In-Network") statusLine += "🟢 In-Network";
+      else if (info.networkStatus === "Out-of-Network") statusLine += "🔴 Out-of-Network";
+      else statusLine += "❓ Unknown Network";
 
-      parts.push(`**Status:** ${statusIcon} ${info.networkStatus}`);
-    }
+      // Follows Us
+      if (info.followsUs === true) statusLine += " • ✅ Follows Us";
+      else if (info.followsUs === false) statusLine += " • ❌ Not Following";
 
-    if (parts.length > 0) {
-      embed.fields?.push({
-        name: "👤 Account Intel",
-        value: parts.join("\n"),
+      fields.push({
+        name: "🛡️ Intelligence",
+        value: statusLine,
         inline: false
       });
     }
   }
 
-  const payload: DiscordWebhookPayload = {
-    embeds: [embed],
-    username: "Social Signals Bot",
+  // 4. Construct Embed
+  const embed: DiscordEmbed = {
+    title: titlePrefix, // e.g. "🔥 High Traction" or "📢 Main Keywords"
+    url: xUrl,
+    description: text,
+    color: color,
+    timestamp: tweet.createdAt,
+    author: {
+      name: `${tweet.authorName || "Unknown"} (@${tweet.authorHandle?.replace("@", "")})`,
+      url: tweet.authorHandle ? `https://x.com/${tweet.authorHandle.replace("@", "")}` : undefined,
+      icon_url: info?.avatarUrl // Use enriched avatar if available
+    },
+    footer: {
+      text: "Social Signals Bot",
+      icon_url: "https://abs.twimg.com/icons/apple-touch-icon-192x192.png" // Generic Twitter icon or bot icon
+    },
+    fields: fields
   };
 
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const payload: DiscordWebhookPayload = {
+    embeds: [embed],
+    username: "Social Signals Bot", // Can customize this
+    // avatar_url: ... // Can customize bot avatar
+  };
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Discord webhook failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Discord webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error(`[ERROR] Stats posting to Discord:`, err);
   }
 }

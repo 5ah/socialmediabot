@@ -8,6 +8,7 @@ export type AccountInfo = {
   followingCount?: number;
   followsUs?: boolean;
   networkStatus?: "In-Network" | "Out-of-Network" | "Unknown";
+  avatarUrl?: string;
   isVip?: boolean;
 };
 
@@ -68,10 +69,12 @@ export async function enrichTweets(tweets: TweetResult[]): Promise<EnrichedTweet
         }
 
         accountInfoMap.set(handle, {
+
           followersCount: info.followers_count,
           followingCount: info.following_count,
           followsUs,
           networkStatus,
+          avatarUrl: info.profile_image_url,
         });
 
       } catch (err) {

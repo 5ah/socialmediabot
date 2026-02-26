@@ -12,6 +12,7 @@ type UserInfo = {
   is_verified?: boolean;
   description?: string;
   location?: string;
+  profile_image_url?: string;
 };
 
 type FollowersResponse = {
@@ -72,6 +73,7 @@ export async function getUserInfo(userName: string): Promise<UserInfo> {
     is_verified: d.isVerified || d.isBlueVerified,
     description: d.description,
     location: d.location?.trim() || undefined,
+    profile_image_url: d.profilePicture || d.profile_image_url_https,
   };
 }
 
@@ -116,9 +118,10 @@ export async function checkFollows(followerHandle: string, targetHandle: string)
 
     if (list.length > 0) {
       const found = list.some((u: any) => {
-        // Field might be userName or screen_name
-        const handle = u.userName || u.screen_name || u.screenName;
-        return handle && handle.toLowerCase() === targetHandle.toLowerCase();
+        // API returns `screen_name` (e.g. "canada_spends") and `userName` (e.g. "canada_spends")
+        // We should check both, and remove @ if present just in case.
+        const handles = [u.screen_name, u.userName, u.screenName].filter(Boolean);
+        return handles.some(h => h.toLowerCase() === targetHandle.toLowerCase().replace(/^@/, ""));
       });
       if (found) return true;
     }
